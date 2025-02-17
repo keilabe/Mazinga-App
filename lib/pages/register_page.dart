@@ -11,7 +11,7 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final GlobalKey<FormState> _registerFormKey = GlobalKey<FormState>();
-  String? email, password;
+  String? email, password, username;
   DatabaseHelper dbHelper = DatabaseHelper();
 
   @override
@@ -28,6 +28,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _wazitoTitle(),
+                  _usernameTextField(),
+                  SizedBox(height: 20),
                   _emailTextField(),
                   SizedBox(height: 20),
                   _passwordTextField(),
@@ -109,16 +111,47 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _usernameTextField() {
+    return TextFormField(
+      decoration: InputDecoration(
+        prefixIcon: Icon(
+          Icons.person,
+          color: Colors.black),
+          hintText: "Username...",
+          filled: true,
+          fillColor: Colors.grey.shade200,
+      ),
+      validator: (value) => value!.isNotEmpty ? null : "Enter a username",
+      onSaved: (value) => username = value,
+    );
+  }
+
   void _registerUser(BuildContext context) async {
-    if (_registerFormKey.currentState!.validate()) {
-      _registerFormKey.currentState!.save();
-      try {
-        await dbHelper.insertUser({'email': email, 'password': password});
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User Registered")));
-        Navigator.pushNamed(context, '/login');
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: Email may already be in use")));
-      }
+    if (!_registerFormKey.currentState!.validate()) {
+      return;      
+    }
+
+    _registerFormKey.currentState!.save();     
+
+    try {
+    // Get the form values
+    Map<String, dynamic> userData = {
+      'username': username!,
+      'email': email!,
+      'password': password!
+    };
+
+    print("Attempting to register user: ${userData}");
+
+    await dbHelper.insertUser(userData);
+
+    print("User successfully registered");    
+   
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User Registered")));
+    Navigator.pushNamed(context, '/login');      
+    } catch (e) {
+    print("Registration failed: $e");
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
     }
   }
 }
