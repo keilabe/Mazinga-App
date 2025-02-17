@@ -1,3 +1,4 @@
+import 'package:fitness_tracking_app/pages/homePage.dart';
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';  // Import the DatabaseHelper class
 
@@ -117,7 +118,14 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       if (isAuthenticated) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login Successful")));
-        Navigator.pushNamed(context, '/home');
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(
+            builder: (context) => HomePage(
+              userEmail: email,
+          ),
+          ),
+          );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid credentials")));
       }
