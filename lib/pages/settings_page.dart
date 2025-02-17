@@ -1,3 +1,8 @@
+import 'package:fitness_tracking_app/pages/dailyActivityInput_page.dart';
+import 'package:fitness_tracking_app/pages/funTools_page.dart';
+import 'package:fitness_tracking_app/pages/homePage.dart';
+import 'package:fitness_tracking_app/pages/progress_tracking_page.dart';
+import 'package:fitness_tracking_app/pages/userProfile_page.dart';
 import 'package:flutter/material.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -12,6 +17,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _lengthPreference = 'cm'; // Default length: cm
   bool _isDarkTheme = false;
 
+  int _currentIndex = 0;
   // List of unit options
   List<String> _unitOptions = ['kg', 'lb'];
   List<String> _lengthOptions = ['cm', 'ft'];
@@ -59,6 +65,63 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildSaveButton(),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
+onTap: (index) {
+  Widget page = SettingsPage();
+  setState(() {
+    _currentIndex = index;
+  });
+  switch (index) {
+    case 0:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      break;
+    case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
+        );
+      break;
+    case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
+        );
+      break;
+    case 3:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => FunToolsPage()),
+        );
+      break;
+    case 4:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SettingsPage()),
+        );
+      break;
+    case 5:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => UserProfilePage()),
+        );
+      break;
+  }
+},
+
       ),
     );
   }
