@@ -1,11 +1,16 @@
 import 'dart:io';
 
+import 'package:fitness_tracking_app/pages/dailyActivityInput_page.dart';
+import 'package:fitness_tracking_app/pages/funTools_page.dart';
+import 'package:fitness_tracking_app/pages/homePage.dart';
+import 'package:fitness_tracking_app/pages/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import '/helpers/database_helper.dart'; // Import the DatabaseHelper
+import '/helpers/database_helper.dart';
+import 'progress_tracking_page.dart'; // Import the DatabaseHelper
 
 class UserProfilePage extends StatefulWidget {
   @override
@@ -28,6 +33,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   double _bmr = 0.0;
   bool _isMetric = true;
   File? _profileImage;
+  int _currentIndex = 0;
 
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
@@ -104,6 +110,63 @@ class _UserProfilePageState extends State<UserProfilePage> {
             _buildBMRDisplay(),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
+onTap: (index) {
+  Widget page =UserProfilePage();
+  setState(() {
+    _currentIndex = index;
+  });
+  switch (index) {
+    case 0:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      break;
+    case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
+        );
+      break;
+    case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
+        );
+      break;
+    case 3:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => FunToolsPage()),
+        );
+      break;
+    case 4:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SettingsPage()),
+        );
+      break;
+    case 5:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => UserProfilePage()),
+        );
+      break;
+  }
+},
+
       ),
     );
   }
