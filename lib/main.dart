@@ -39,7 +39,19 @@ class _MyAppState extends State<MyApp> {
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
     // Return the correct initial page based on login status
-    return isLoggedIn ? HomePage() : LoginPage();
+  if (isLoggedIn) {
+    // Get the user email from SharedPreferences
+    String? userEmail = prefs.getString('userEmail');
+    if (userEmail != null) {
+    return HomePage(userEmail: userEmail!);
+  } else {
+    print("No user email found in SharedPreferences");
+
+    return LoginPage();
+  }
+  } else {
+    return LoginPage();
+  }
   }
 
   @override
