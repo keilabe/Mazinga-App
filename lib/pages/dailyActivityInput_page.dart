@@ -1,6 +1,7 @@
 import 'package:fitness_tracking_app/helpers/database_helper.dart';
 import 'package:fitness_tracking_app/pages/funTools_page.dart';
 import 'package:fitness_tracking_app/pages/homePage.dart';
+import 'package:fitness_tracking_app/pages/main_screen.dart';
 import 'package:fitness_tracking_app/pages/progress_tracking_page.dart';
 import 'package:fitness_tracking_app/pages/settings_page.dart';
 import 'package:fitness_tracking_app/pages/userProfile_page.dart';
@@ -123,64 +124,7 @@ class _DailyActivityInputPageState extends State<DailyActivityInputPage> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-onTap: (index) {
-  Widget page = DailyActivityInputPage(); // Default assignment
-  setState(() {
-    _currentIndex = index;
-  });
-  switch (index) {
-    case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
-      break;
-    case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
-        );
-      break;
-    case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
-        );
-      break;
-    case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => FunToolsPage()),
-        );
-      break;
-    case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => SettingsPage()),
-        );
-      break;
-    case 5:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => UserProfilePage()),
-        );
-      break;
-  }
-},
-
-      ),
+      ),      
     );
   }
 
@@ -261,7 +205,7 @@ onTap: (index) {
     Map<String, dynamic> activity = {
       'type': type,
       'value': value,
-      'date': DateTime.now().toString(),
+      'date': _dateFormat.format(DateTime.now()),
     };
 
     DatabaseHelper dbHelper = DatabaseHelper();
@@ -281,40 +225,60 @@ onTap: (index) {
     _sleepController.clear();
   }
 
-  Future<void> _saveDailyActivity() async {
-    // Saves the user's input data
-    Map<String, dynamic> activityData = {
-      'date': _currentDate,
-      'exercise': _exerciseController.text,
-      'calories': _totalCalories,
-      'water': _totalWater,
-      'sleep': double.parse(_sleepController.text),
-    };
+Future<void> _saveDailyActivity() async {
+  // Saves the user's input data
+  Map<String, dynamic> activityData = {
+    'date': _currentDate,
+    'exercise': _exerciseController.text,
+    'calories': _totalCalories,
+    'water': _totalWater,
+    'sleep': double.parse(_sleepController.text),
+  };
 
-    try {
-      await DatabaseHelper().insertActivity(activityData);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Activity logged successfully")));
-      setState(() {
-        // Resets fields after saving
-        _exerciseController.clear();
-        _caloriesController.clear();
-        _waterController.clear();
-        _sleepController.clear();
-        _totalCalories = 0;
-        _totalWater = 0;
-      });
-    } catch (e) {
-      print("Error saving activity: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to log activity")));
-    }
+  try {
+    await DatabaseHelper().insertActivity(activityData);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Activity logged successfully")));
+    setState(() {
+      // Resets fields after saving
+      _exerciseController.clear();
+      _caloriesController.clear();
+      _waterController.clear();
+      _sleepController.clear();
+      _totalCalories = 0;
+      _totalWater = 0;
+    });
+  } catch (e) {
+    print("Error saving activity: $e");
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to log activity")));
   }
+}  
+  
+void _handleSaveActivity() async {
+  try {
+  String date = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String exercise = _exerciseController.text;
+  double calories = double.parse(_caloriesController.text);
+  double water = double.parse(_waterController.text);
+  double sleep = double.parse(_sleepController.text);
 
-  void _handleSaveActivity() async {
-  await _saveDailyActivity();
-  // Navigate to HomePage after saving the data
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => HomePage()),
-  );
+  // Log the activity data before saving
+  print("Attempting to save activity data:");
+  print("Date: $date");
+  print("Exercise: $exercise");
+  print("Calories: $calories");
+  print("Water: $water");
+  print("Sleep: $sleep");
+
+  await DatabaseHelper().handleSaveActivity(date, exercise, calories, water, sleep);
+    
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => MainScreen())
+    );
+  } catch (e) {
+    print("Improper page refresh: $e");
+  }
 }
+ 
 }
+

@@ -13,7 +13,15 @@ class FunToolsPage extends StatefulWidget {
 class _FunToolsPageState extends State<FunToolsPage> {
   final TextEditingController _textController = TextEditingController();
   String _result = "";
-  int _currentIndex = 0;
+  int _selectedIndex = 0;
+  final List<Widget> Pages = [
+    HomePage(),
+    DailyActivityInputPage(),
+    ProgressTrackingPage(),
+    FunToolsPage(),
+    SettingsPage(),
+    UserProfilePage(),
+  ];
 
   // Function to check if the input is a palindrome
   bool isPalindrome(String text) {
@@ -59,63 +67,7 @@ class _FunToolsPageState extends State<FunToolsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-onTap: (index) {
-  Widget page = FunToolsPage();
-  setState(() {
-    _currentIndex = index;
-  });
-  switch (index) {
-    case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
-      break;
-    case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
-        );
-      break;
-    case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
-        );
-      break;
-    case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => FunToolsPage()),
-        );
-      break;
-    case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => SettingsPage()),
-        );
-      break;
-    case 5:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => UserProfilePage()),
-        );
-      break;
-  }
-},
-
-      ),
+      // bottomNavigationBar: _bottomNavigationBar(),
     );
   }
 
@@ -151,4 +103,29 @@ onTap: (index) {
       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
     );
   }
+
+  // Widget _bottomNavigationBar() {
+  //   return BottomNavigationBar(
+  //     currentIndex: _selectedIndex,
+  //     onTap: (_index){
+  //       setState(() {
+  //         _selectedIndex = _index;
+
+  //         //Navigates to the selected page
+  //         Navigator.push(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => Pages[_index]),
+  //         );
+  //       });
+  //     },
+  //     items: [
+  //         BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+  //       ],
+  //   );
+  // }
 }

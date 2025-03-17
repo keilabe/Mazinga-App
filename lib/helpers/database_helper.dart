@@ -47,7 +47,7 @@ class DatabaseHelper {
     return result.isNotEmpty ? result.first : null;
   }
 
-  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+Future<Map<String, dynamic>?> getUserByEmail(String email) async {
   if (email == null) {
     return null;
   }
@@ -118,6 +118,8 @@ class DatabaseHelper {
     }
   }
 
+  
+
   Future<int> insertUser(Map<String, dynamic> user) async {
     Database db = await database;
     return await db.insert('users', user);
@@ -152,19 +154,20 @@ class DatabaseHelper {
     await db.insert('daily_activities', activity);
   }
 
-  Future<List<Map<String, dynamic>>> getActivityByDate(String date) async {
-    final db = await database;
-    return await db.query(
-      'daily_activities',
-      where: 'date = ?',
-      whereArgs: [date],
-    );
-  }
+ Future<List<Map<String, dynamic>>> getActivityByDate(String date) async {
+  final db = await database;
+  return await db.query(
+    'daily_activities',
+    where: 'date = ?',
+    whereArgs: [date],
+  );
+}
 
   Future<List<Map<String, dynamic>>> getTodayActivities() async {
     String date = DateFormat('yyyy-MM-dd').format(DateTime.now());
     return await getActivityByDate(date);
   }
+
 
   Future<List<Map<String, dynamic>>> getActivities() async {
     Database db = await database;
@@ -193,11 +196,23 @@ class DatabaseHelper {
         'water': water,
         'sleep': sleep,
       };
+      
+
+          // Log the activity data before saving
+    print("Attempting to save activity data:");
+    print("Date: $date");
+    print("Exercise: $exercise");
+    print("Calories: $calories");
+    print("Water: $water");
+    print("Sleep: $sleep");
       await insertActivity(activityData);
+        // Log successful insertion
+    print("Activity successfully saved to database.");
     } catch (e) {
       print("Error saving activity: $e");
     }
   }
+  
 
   // Added methods below
 
@@ -236,6 +251,35 @@ class DatabaseHelper {
     return await db.query(
       'daily_activities',
       orderBy: 'date DESC',
+    );
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile(int userId) async {
+    final db = await database;
+    List<Map<String, dynamic>> result = await db.query(
+      'user_profile',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  Future<void> updateUserProfile(int userId, Map<String, dynamic> profile) async {
+    final db = await database;
+    await db.update(
+      'user_profile',
+      profile,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<void> deleteUserProfile(int userId) async {
+    final db = await database;
+    await db.delete(
+      'user_profile',
+      where: 'user_id = ?',
+      whereArgs: [userId],
     );
   }
 }

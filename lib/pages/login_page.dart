@@ -1,5 +1,7 @@
 import 'package:fitness_tracking_app/pages/homePage.dart';
+import 'package:fitness_tracking_app/pages/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/database_helper.dart';  // Import the DatabaseHelper class
 
 class LoginPage extends StatefulWidget {
@@ -11,6 +13,7 @@ class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> _loginFormKey = GlobalKey<FormState>();
   String? email, password;
   DatabaseHelper dbHelper = DatabaseHelper();
+  TextEditingController _emailController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +115,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _loginUser(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userEmail', _emailController.text);
     if (_loginFormKey.currentState!.validate()) {
       _loginFormKey.currentState!.save();
       bool isAuthenticated = await dbHelper.authenticateUser(email!, password!);
@@ -119,13 +125,9 @@ class _LoginPageState extends State<LoginPage> {
       if (isAuthenticated) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login Successful")));
         Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(
-            builder: (context) => HomePage(
-              userEmail: email,
-          ),
-          ),
-          );
+        context,
+        MaterialPageRoute(builder: (context) => MainScreen()),
+      );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid credentials")));
       }

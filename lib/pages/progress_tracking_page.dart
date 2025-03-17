@@ -15,9 +15,17 @@ class ProgressTrackingPage extends StatefulWidget {
 }
 
 class _ProgressTrackingPageState extends State<ProgressTrackingPage> {
-  String _selectedSort = "date"; // Default sorting by date
-  int _currentIndex = 0;
+  String _selectedSort = "date";
+  int _selectedIndex = 0;
   List<Map<String, dynamic>> _activities = [];
+  final List<Widget> Pages = [
+    HomePage(),
+    DailyActivityInputPage(),
+    ProgressTrackingPage(),
+    FunToolsPage(),
+    SettingsPage(),
+    UserProfilePage(),
+  ];
 
   @override
   void initState() {
@@ -28,18 +36,28 @@ class _ProgressTrackingPageState extends State<ProgressTrackingPage> {
   void _loadActivities() async {
     final dbHelper = DatabaseHelper();
     final result = await dbHelper.getActivities();
-    setState(() => _activities = result);
+    print("Fetched Activities: $result");  // Debugging output
+    setState(() => _activities = List<Map<String, dynamic>>.from(result));
   }
 
   @override
   Widget build(BuildContext context) {
-    _activities.sort((a, b) {
+    // Sort activities safely
+    List<Map<String, dynamic>> sortedActivities = [..._activities];
+    sortedActivities.sort((a, b) {
+        final dateA = a["date"] ?? "";
+        final dateB = b["date"] ?? "";
+        final caloriesA = a["calories"] ?? 0;
+        final caloriesB = b["calories"] ?? 0;
+        final durationA = a["duration"] ?? 0;
+        final durationB = b["duration"] ?? 0;
+
       if (_selectedSort == "date") {
-        return a["date"].compareTo(b["date"]);
+        return (a["date"] ?? "").compareTo(b["date"] ?? "");
       } else if (_selectedSort == "calories") {
-        return b["calories"].compareTo(a["calories"]);
+        return (b["calories"] ?? 0).compareTo(a["calories"] ?? 0);
       } else {
-        return b["duration"].compareTo(a["duration"]);
+        return (b["duration"] ?? 0).compareTo(a["duration"] ?? 0);
       }
     });
 
@@ -49,114 +67,110 @@ class _ProgressTrackingPageState extends State<ProgressTrackingPage> {
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(children: [
-          DropdownButton<String>(
-            value: _selectedSort,
-            items: ["date", "calories", "duration"].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text("Sort by ${value}"),
-              );
-            }).toList(),
-            onChanged: (value) => setState(() => _selectedSort = value!),
-          ),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                titlesData: FlTitlesData(show: true),
-                gridData: FlGridData(show: true),
-                borderData: FlBorderData(show: true),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _activities
-                        .asMap()
-                        .entries
-                        .map((entry) => FlSpot(
-                            entry.key.toDouble(),
-                            (entry.value['calories'] ?? 0).toDouble()))
-                        .toList(),
-                    isCurved: true,
-                    color: Colors.blue,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _activities.length,
-              itemBuilder: (context, index) {
-                return Card(
-                  margin: EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    title: Text("${_activities[index]["date"]}"),
-                    subtitle: Text(
-                        "${_activities[index]["calories"]} kcal . ${_activities[index]["duration"]} mins"),
-                    trailing: Icon(Icons.trending_up),
-                  ),
+        child: Column(
+          children: [
+            DropdownButton<String>(
+              value: _selectedSort,
+              items: ["date", "calories", "duration"].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text("Sort by ${value}"),
                 );
-              },
+              }).toList(),
+              onChanged: (value) => setState(() => _selectedSort = value!),
             ),
-          )
-        ]),
+            SizedBox(
+              height: 200,
+              child: LineChart(
+  LineChartData(
+    titlesData: FlTitlesData(
+      show: true,
+      leftTitles: AxisTitles(
+          axisNameWidget: Text("Total calories (kcal)", style: TextStyle(fontSize: 12)),
+          sideTitles: SideTitles(
+            showTitles: true,
+          getTitlesWidget: (double value, TitleMeta meta) {
+            return Text(value.toString(), style: TextStyle(fontSize: 12));
+           },
+          ),
+        ),
+        rightTitles: AxisTitles(
+          axisNameWidget: Text("Total calories (kcal)", style: TextStyle(fontSize: 12)),
+          sideTitles: SideTitles(showTitles: false),
+        ),
+         bottomTitles: AxisTitles(
+             axisNameWidget: Text("Date", style: TextStyle(fontSize: 12)),
+              sideTitles: SideTitles(
+              showTitles: true,
+               getTitlesWidget: (double value, TitleMeta meta) {
+              return Text("Date", style: TextStyle(fontSize: 12));
+          },
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-        onTap: (index) {
-          Widget page = ProgressTrackingPage();
-          setState(() {
-            _currentIndex = index;
-          });
-          switch (index) {
-            case 0:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HomePage()),
-              );
-              break;
-            case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
-              );
-              break;
-            case 2:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
-              );
-              break;
-            case 3:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => FunToolsPage()),
-              );
-              break;
-            case 4:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsPage()),
-              );
-              break;
-            case 5:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => UserProfilePage()),
-              );
-              break;
-          }
-        },
+    ),
+    gridData: FlGridData(show: true),
+    borderData: FlBorderData(show: true),
+    lineBarsData: [
+      LineChartBarData(
+        spots: sortedActivities
+            .asMap()
+            .entries
+            .map((entry) => FlSpot(
+                entry.key.toDouble(),
+                (entry.value['calories'] ?? 0).toDouble()))
+            .toList(),
+        isCurved: true,
+        color: Colors.blue,
       ),
+    ],
+  ),
+),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: sortedActivities.length,
+                itemBuilder: (context, index) {
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text("${sortedActivities[index]["date"]}"),
+                      subtitle: Text(
+                          "${sortedActivities[index]["calories"]} kcal . ${sortedActivities[index]["duration"]} mins"),
+                      trailing: Icon(Icons.trending_up),
+                    ),
+                  );
+                },
+              ),
+            )
+          ],
+        ),
+      ),
+      // bottomNavigationBar: _bottomNavigationBar(),
     );
   }
+
+//   Widget _bottomNavigationBar() {
+//     return BottomNavigationBar(
+//       currentIndex: _selectedIndex,
+//       onTap: (_index){
+//         setState(() {
+//           _selectedIndex = _index;
+
+//           //Navigates to the selected page
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(builder: (context) => Pages[_index]),
+//           );
+//         });
+//       },
+//       items: [
+//           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+//           BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
+//           BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+//           BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
+//           BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+//           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+//         ],
+//     );
+// }
 }

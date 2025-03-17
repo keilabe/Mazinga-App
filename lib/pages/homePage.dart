@@ -1,14 +1,16 @@
 import 'package:fitness_tracking_app/helpers/database_helper.dart';
+import 'package:fitness_tracking_app/models/fitness_day_data.dart';
 import 'package:fitness_tracking_app/pages/dailyActivityInput_page.dart';
 import 'package:fitness_tracking_app/pages/funTools_page.dart';
 import 'package:fitness_tracking_app/pages/progress_tracking_page.dart';
 import 'package:fitness_tracking_app/pages/settings_page.dart';
 import 'package:fitness_tracking_app/pages/userProfile_page.dart';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   final String? userEmail;
-
   HomePage({Key? key, this.userEmail}) : super(key: key);
 
   @override
@@ -16,16 +18,23 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Statistics tracking
   double totalCalories = 0;
   double totalWater = 0;
   int exerciseCount = 0;
-  double waterGoal = 2.0; // Default goal in liters
-  
+  double waterGoal = 2.0; // Water goal in liters
   String userName = "User";
   DatabaseHelper dbHelper = DatabaseHelper();
-  
   bool isLoading = false;
+  List<FlSpot> _chartData = []; // Stores chart data points
+  // int _selectedIndex = 0;
+  // final List<Widget> Pages = [
+  //   HomePage(),
+  //   DailyActivityInputPage(),
+  //   ProgressTrackingPage(),
+  //   FunToolsPage(),
+  //   SettingsPage(),
+  //   UserProfilePage(),
+  // ];
 
   @override
   void initState() {
@@ -35,22 +44,22 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadUserData() async {
     setState(() => isLoading = true);
-    
+
     try {
-      if (widget.userEmail != null) {
-        Map<String, dynamic>? user = await dbHelper.getUserByEmail(widget.userEmail!);
-        
-        if (user != null) {
-          setState(() {
-            userName = user['username'];
-          });
-          
-          await _loadTodaysSummary();
-        } else {
-          print("No logged-in user found");
-        }
-      } else {
+      if (widget.userEmail == null || widget.userEmail!.isEmpty) {
         print("No user email provided");
+        setState(() => isLoading = false);
+        return;
+      }
+
+      Map<String, dynamic>? user = await dbHelper.getUserByEmail(widget.userEmail!);
+      if (user != null) {
+        setState(() {
+          userName = user['username'] ?? "User";
+        });
+        await _loadTodaysSummary();
+      } else {
+        print("No logged-in user found");
       }
     } catch (e) {
       print("Error loading user data: $e");
@@ -60,29 +69,216 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadTodaysSummary() async {
-    try {
-      final activities = await dbHelper.getTodayActivities();
-      
-      double totalCaloriesTemp = 0;
-      double totalWaterTemp = 0;
-      int exerciseCountTemp = 0;
+  try {
+    final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final activities = await dbHelper.getActivityByDate(today); // Get only today's data
 
-      for (var activity in activities) {
-        totalCaloriesTemp += activity['calories'] ?? 0;
-        totalWaterTemp += activity['water'] ?? 0;
-        if (activity['exercise']?.isNotEmpty ?? false) {
-          exerciseCountTemp++;
-        }
+    double totalCaloriesTemp = 0;
+    double totalWaterTemp = 0;
+    int exerciseCountTemp = 0;
+    List<FlSpot> chartSpots = [];
+
+    // Track time-based data
+    List<double> hourlyCalories = List.generate(24, (_) => 0);
+
+    for (var activity in activities) {
+      // Sum totals
+      totalCaloriesTemp += activity['calories'] ?? 0;
+      totalWaterTemp += activity['water'] ?? 0;
+      if (activity['exercise']?.isNotEmpty ?? false) exerciseCountTemp++;
+
+      // Parse activity time
+      DateTime time = DateTime.parse(activity['date']);
+      hourlyCalories[time.hour] += activity['calories'] ?? 0;
+    }
+
+    // Generate chart data
+    for (int hour = 0; hour < 24; hour++) {
+      chartSpots.add(FlSpot(hour.toDouble(), hourlyCalories[hour]));
+    }
+
+    setState(() {
+      totalCalories = totalCaloriesTemp;
+      totalWater = totalWaterTemp;
+      exerciseCount = exerciseCountTemp;
+      _chartData = chartSpots;
+    });
+  } catch (e) {
+    print("Error loading data: $e");
+  }
+}
+
+  Widget _buildChart() {
+  return FutureBuilder<List<Map<String, dynamic>>>(
+    future: DatabaseHelper().getActivities(),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) {
+        return Center(child: Text("Loading..."));
       }
 
-      setState(() {
-        totalCalories = totalCaloriesTemp;
-        totalWater = totalWaterTemp;
-        exerciseCount = exerciseCountTemp;
-      });
-    } catch (e) {
-      print("Error loading today's summary: $e");
-    }
+      if (snapshot.data!.isEmpty) {
+        return Center(child: Text("No data available"));
+      }
+
+      // Convert database data to chart data points
+      List<FitnessDayData> fitnessData = snapshot.data!.map((row) {
+        return FitnessDayData(
+          date: DateTime.parse(row['date']),
+          calories: row['calories'] as double,
+          exerciseMinutes: row['exercise'] != null ? 
+            (row['exercise'] as String).length.toDouble() : 0.0,
+          waterGlasses: row['water'] as double,
+          sleepHours: row['sleep'] as double,
+        );
+      }).toList();
+
+      // Prepare data points for each metric
+      List<FlSpot> caloriesSpots = fitnessData.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.calories);
+      }).toList();
+
+      List<FlSpot> exerciseSpots = fitnessData.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.exerciseMinutes);
+      }).toList();
+
+      List<FlSpot> waterSpots = fitnessData.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.waterGlasses);
+      }).toList();
+
+      List<FlSpot> sleepSpots = fitnessData.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.sleepHours);
+      }).toList();
+
+      return SizedBox(
+        height: 200,
+        child: LineChart(
+          LineChartData(
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 2,
+                  getTitlesWidget: (value, _) => 
+                      Text(DateFormat('MM/dd').format(
+                          fitnessData[value.toInt()].date)),
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, _) => 
+                      Text(value.toStringAsFixed(0)),
+                ),
+              ),
+            ),
+            gridData: FlGridData(show: true),
+            borderData: FlBorderData(show: true),
+            lineBarsData: [
+              LineChartBarData(
+                spots: caloriesSpots,
+                isCurved: true,
+                color: Colors.blue,
+                barWidth: 4,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+              LineChartBarData(
+                spots: exerciseSpots,
+                isCurved: true,
+                color: Colors.green,
+                barWidth: 4,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+              LineChartBarData(
+                spots: waterSpots,
+                isCurved: true,
+                color: Colors.purple,
+                barWidth: 4,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+              LineChartBarData(
+                spots: sleepSpots,
+                isCurved: true,
+                color: Colors.red,
+                barWidth: 4,
+                dotData: FlDotData(show: true),
+                belowBarData: BarAreaData(show: false),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Fitness Tracker"), actions: [
+        IconButton(icon: Icon(Icons.refresh), onPressed: _loadUserData),
+      ]),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Good Morning, $userName",
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 10),
+                    Text("Stay on track with your fitness goals!",
+                        style: TextStyle(fontSize: 16, color: Colors.grey)),
+
+                    // Stats Section
+                    SizedBox(height: 20),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildStatCard("Workouts", "$exerciseCount sessions"),
+                          _buildStatCard("Calories", "${totalCalories.toInt()} kcal"),
+                          _buildStatCard("Water", "${totalWater.toStringAsFixed(1)}/$waterGoal L"),
+                        ],
+                      ),
+                    ),
+
+                    // Progress Chart
+                    SizedBox(height: 20),
+                    Text("Progress Chart", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    _buildChart(),
+
+                    // Call-to-Action Buttons
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => DailyActivityInputPage()));
+                          },
+                          child: Text("Log Activity"),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => ProgressTrackingPage()));
+                          },
+                          child: Text("Track Progress"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      // bottomNavigationBar: _bottomNavigationBar(),      
+    );
   }
 
   Widget _buildStatCard(String title, String value) {
@@ -95,10 +291,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Text(value, style: TextStyle(fontSize: 16)),
           ],
@@ -107,228 +300,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProgressBar(String label, double progress) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 16)),
-        SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: Colors.grey.shade200,
-          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
-        ),
-      ],
-    );
-  }
+  // Widget _bottomNavigationBar() {
+  //   return BottomNavigationBar(
+  //     currentIndex: _selectedIndex,
+  //     onTap: (_index){
+  //       setState(() {
+  //         _selectedIndex = _index;
 
-  Widget _buildActivityItem(String activity, double completion) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(activity, style: TextStyle(fontSize: 16)),
-        SizedBox(width: 10),
-        Expanded(
-          child: LinearProgressIndicator(
-            value: completion,
-            minHeight: 5,
-            backgroundColor: Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Fitness Tracker"),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadUserData,
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications),
-            onPressed: () {
-              // Navigate to notifications page
-            },
-          ),
-        ],
-      ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: IntrinsicHeight(
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Greeting Section
-                      Text(
-                        "Good Morning, $userName",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        "Stay on track with your fitness goals!",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-
-                      // Quick Stats Overview
-                      SizedBox(height: 20),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildStatCard(
-                                "Workouts", "$exerciseCount sessions"),
-                            _buildStatCard(
-                                "Calories", "${totalCalories.toInt()} kcal"),
-                            _buildStatCard(
-                                "Water",
-                                "${totalWater.toStringAsFixed(1)}/$waterGoal L"),
-                          ],
-                        ),
-                      ),
-
-                      // Call-to-Action Buttons
-                      SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DailyActivityInputPage(),
-                                    ),
-                                  );
-                                },
-                                child: Text("Log Activity"),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ProgressTrackingPage(),
-                                    ),
-                                  );
-                                },
-                                child: Text("Track Progress"),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Progress Visualization
-                      SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: _buildProgressBar(
-                            "Daily Fitness Goal",
-                            totalCalories / 2500), // Assuming daily goal of 2500 calories
-                      ),
-
-                      // Daily Activity Overview
-                      SizedBox(height: 20),
-                      Text(
-                        "Today's Activities",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: _buildActivityItem(
-                            "Exercise: Jogging (30 minutes)", 1.0),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: _buildActivityItem(
-                            "Meal: Breakfast (400 kcal)", 0.8),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: _buildActivityItem("Sleep: 7 hours", 0.9),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 0,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.directions_run), label: "Activity"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.show_chart), label: "Progress"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.games), label: "Fun Tools"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HomePage()),
-              );
-              break;
-            case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DailyActivityInputPage(),
-                ),
-              );
-              break;
-            case 2:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProgressTrackingPage(),
-                ),
-              );
-              break;
-            case 3:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => FunToolsPage()),
-              );
-              break;
-            case 4:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsPage()),
-              );
-              break;
-            case 5:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => UserProfilePage()),
-              );
-              break;
-          }
-        },
-      ),
-    );
-  }
+  //         //Navigates to the selected page
+  //         Navigator.push(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => Pages[_index]),
+  //         );
+  //       });
+  //     },
+  //     items: [
+  //         BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+  //         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+  //       ],
+  //   );
+  // }
 }

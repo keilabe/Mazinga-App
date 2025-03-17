@@ -4,6 +4,9 @@ import 'package:fitness_tracking_app/pages/homePage.dart';
 import 'package:fitness_tracking_app/pages/progress_tracking_page.dart';
 import 'package:fitness_tracking_app/pages/userProfile_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../helpers/theme_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -24,12 +27,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // Function to toggle dark/light theme
   void _toggleTheme(bool value) {
-    setState(() {
-      _isDarkTheme = value;
-      // Apply the theme change to the app's theme (for example purposes, it's just a variable)
-      // In a real app, you would use ThemeMode.system or ThemeData
-    });
-  }
+  setState(() {
+    _isDarkTheme = value;
+    Provider.of<ThemeProvider>(context, listen: false)
+        .toggleTheme(); // Notify theme provider
+  });
+}
+
 
   // Function to save settings (for example, save to local storage or a database)
   void _saveSettings() {
@@ -65,64 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildSaveButton(),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: "Activity"),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-          BottomNavigationBarItem(icon: Icon(Icons.games), label: "Fun Tools"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-onTap: (index) {
-  Widget page = SettingsPage();
-  setState(() {
-    _currentIndex = index;
-  });
-  switch (index) {
-    case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
-      break;
-    case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => DailyActivityInputPage()),
-        );
-      break;
-    case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ProgressTrackingPage()),
-        );
-      break;
-    case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => FunToolsPage()),
-        );
-      break;
-    case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => SettingsPage()),
-        );
-      break;
-    case 5:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => UserProfilePage()),
-        );
-      break;
-  }
-},
-
-      ),
+      ),      
     );
   }
 
@@ -194,17 +141,21 @@ onTap: (index) {
 
   // Widget to switch between dark and light theme
   Widget _buildThemeSwitcher() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text("Dark Theme", style: TextStyle(fontSize: 18)),
-        Switch(
-          value: _isDarkTheme,
-          onChanged: _toggleTheme,
-        ),
-      ],
-    );
-  }
+  bool isDarkTheme = Provider.of<ThemeProvider>(context).currentTheme == ThemeMode.dark;
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text("Dark Theme", style: TextStyle(fontSize: 18)),
+      Switch(
+        value: isDarkTheme,
+        onChanged: (value) {
+          Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+        },
+      ),
+    ],
+  );
+}
+
 
   // Save button
   Widget _buildSaveButton() {
